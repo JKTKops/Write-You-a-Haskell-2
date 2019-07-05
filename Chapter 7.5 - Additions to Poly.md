@@ -36,7 +36,8 @@ import Control.Monad.State
 import Control.Monad.Identity
 
 newtype SupplyT s m a = SupplyT (StateT [s] m a)
-  deriving (Functor, Applicative, Monad, MonadTrans)
+  deriving ( Functor, Applicative, Monad
+           , MonadTrans, MonadIO, MonadFix)
 
 runSupplyT :: Monad m => SupplyT s m a -> [s] -> m a
 runSupplyT (SupplyT m) init = evalStateT m init
