@@ -10,30 +10,24 @@ The goal of this project is to try and, in some sense, complete Steven Diehl's W
     | - Lexer.hs
     \ - Parser.hs
   | - PhSyn
-    | - PhExpr.hs  # The abstract syntax of 
-					 ProtoHaskell expressions
-    \ - PhType.hs  # The abstract representation of
-                     ProtoHaskell types
+    | - PhExpr.hs  # The abstract syntax of ProtoHaskell expressions
+    \ - PhType.hs  # The abstract representation of ProtoHaskell types
   | - TypeCheck    # Everything related to type-checking
                      Eventually includes Core
     \ - TcInfer.hs
   \ - Types        # Wide-spread type utilities, like TyEnv
     \ - TyEnv.hs
 | - Control 
-  \ - Monad        # Custom monadic logic will live here
-                     If it is needed in many places
+  \ - Monad        # Custom monadic logic will live here if it is needed in many places
     | - Supply
       | - Class.hs
-    \ - Supply.hs # Monad Transformer for monads which store
-                    a supply of some type. Thin wrapper
-                    around StateT, and will usually be used
-                    for names.     
+    \ - Supply.hs # Monad Transformer for monads which store a supply of some type. Thin wrapper
+                    around StateT, and will usually be used for names.     
 | - Interpreter
   | - Eval.hs
   \ - Main.hs
 \ - Utils
-  \ - Outputable.hs # Re-exports most of the pretty
-					  library and an Outputable class         
+  \ - Outputable.hs # Re-exports most of the pretty library and an Outputable class         
 </code></pre>
 <p>This may seem like overkill now, but the organization will be nice later, even if several folders never grow beyond 2 to 4 modules.</p>
 <p>By default, I have the following extensions enabled:</p>
