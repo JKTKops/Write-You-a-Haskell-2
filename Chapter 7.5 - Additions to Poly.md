@@ -67,7 +67,7 @@ We'll also provide a couple of default supplies for common types. The most impor
 defaultNameSupply :: [String]
 defaultNameSupply = [1..] >>= flip replicateM ['a'..'z']
 ```
-This results in the list `["a", "b", ..., "z", "aa", "ab", ...]`
+This results in the list `["a", "b", ..., "z", "aa", "ab", ...]`.
 <br />
 The last detail is that the monad class instances go both ways. We've provided instances of `MonadSupply` when a `MonadSupply` is on top of a common transformer, but we could also have a common transformer on top of `SupplyT`. So we also have to provided instances of the form:
 ```Haskell
@@ -142,13 +142,13 @@ to
 infer expr = case expr of
 	...
 	Let x e1 e2 ->
-		env <- ask
-		(t0, cs) <- listen $ infer e1
-		subst <- liftEither $ runSolve cs
-		let t1 = apply subst t0
-			sc = generalize env t1
-		t2 <- inEnv (x, sc) $ infer e2
-		return t2
+	    env <- ask
+	    (t0, cs) <- listen $ infer e1
+	    subst <- liftEither $ runSolve cs
+	    let t1 = apply subst t0
+	        sc = generalize env t1
+	    t2 <- inEnv (x, sc) $ infer e2
+	    return t2
 ```
 We use `listen` from `MonadWriter` to get the constraints generated during inference of `e1`, solve those constraints, and apply the solution to `t0`. Then we generalize as before.
 
