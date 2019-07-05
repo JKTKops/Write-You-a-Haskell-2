@@ -131,24 +131,24 @@ Change
 infer expr = case expr of
     ...
     Let x e1 e2 ->
-	    env <- ask
-	    t1 <- infer e1
-	    let sc = generalize env t1
-	    t2 <- inEnv (x, sc) $ infer e2
-	    return t2
+        env <- ask
+        t1 <- infer e1
+        let sc = generalize env t1
+        t2 <- inEnv (x, sc) $ infer e2
+        return t2
 ```
 to
 ```Haskell
 infer expr = case expr of
-	...
-	Let x e1 e2 ->
-	    env <- ask
-	    (t0, cs) <- listen $ infer e1
-	    subst <- liftEither $ runSolve cs
-	    let t1 = apply subst t0
-	        sc = generalize env t1
-	    t2 <- inEnv (x, sc) $ infer e2
-	    return t2
+    ...
+    Let x e1 e2 ->
+        env <- ask
+        (t0, cs) <- listen $ infer e1
+        subst <- liftEither $ runSolve cs
+        let t1 = apply subst t0
+            sc = generalize env t1
+        t2 <- inEnv (x, sc) $ infer e2
+        return t2
 ```
 We use `listen` from `MonadWriter` to get the constraints generated during inference of `e1`, solve those constraints, and apply the solution to `t0`. Then we generalize as before.
 
