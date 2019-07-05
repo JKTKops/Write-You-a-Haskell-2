@@ -1,5 +1,9 @@
-# Additions to Poly
+---
 
+
+---
+
+<h1 id="additions-to-poly">Additions to Poly</h1>
 <h2> The SupplyT Monad Transformer </h2>
 As explained previously, a monad transformer is a way of adding new capabilities onto an existing monad, where of course monads are like "first-class actions." Frequently throughout compiling, we'll need to grab fresh names (and possibly numbers, etc). Rather than explicitly adding a component to the state layer of our monads, we can abstract this out into its own transformer layer.
 <p>Since we intend to use <code>SupplyT</code> inside other monads, we’ll need to provide a <em>monad class</em>.</p>
@@ -11,7 +15,7 @@ As explained previously, a monad transformer is a way of adding new capabilities
     <span class="token hvariable">supply</span> <span class="token operator">::</span> <span class="token hvariable">m</span> <span class="token hvariable">s</span>
     <span class="token hvariable">isExhausted</span> <span class="token operator">::</span> <span class="token hvariable">m</span> <span class="token constant">Bool</span>
 </code></pre>
-<p>The <code>MonadSupply</code> class is a “multiparam typeclass”, which behaves as the expected generalization of standard Haskell single-param typeclasses. The addition phrase <code>| m -&gt; s</code> is called a “Functional Dependency”, and means that <code>m</code> <em>determines</em> <code>s</code>. This means that any particular monad <code>m</code> can only have one <code>MonadSupply</code> instance. This is fine for our purposes.</p>
+<p>The phrase <code>| m -&gt; s</code> is called a “Functional Dependency”, and means that <code>m</code> <em>determines</em> <code>s</code>. This means that any particular monad <code>m</code> can only have one <code>MonadSupply</code> instance. This is fine for our purposes.</p>
 <p>(Beginners with Functional Dependencies should note that this means <code>StateT Int (State String)</code> is fundamentally distinct from <code>State (Int, String)</code>, because the former doesn’t have a <code>MonadState s</code> instance where <code>s</code> contains <code>Int</code>. <code>s</code> is forced to <code>String</code> by the functional dependency.)</p>
 <p><code>isExhausted :: MonadSupply s m =&gt; m Bool</code> is provided just in-case. I suspect that every time we need this monad, we will be using an infinite supply, and we won’t insert exhausted-checks when our supply is infinite.</p>
 <p>Since we also plan on using other monads underneath <code>SupplyT</code>, we need to make sure that <code>SupplyT s m</code> is an instance of a monad class if <code>m</code> is an instance of that monad class. These instances are trivial:</p>
