@@ -1,9 +1,5 @@
----
+# Additions to Poly
 
-
----
-
-<h1> Additions to Poly </h1>
 <h2> The SupplyT Monad Transformer </h2>
 As explained previously, a monad transformer is a way of adding new capabilities onto an existing monad, where of course monads are like "first-class actions." Frequently throughout compiling, we'll need to grab fresh names (and possibly numbers, etc). Rather than explicitly adding a component to the state layer of our monads, we can abstract this out into its own transformer layer.
 <p>Since we intend to use <code>SupplyT</code> inside other monads, we’ll need to provide a <em>monad class</em>.</p>
