@@ -94,6 +94,7 @@ to
 decl = try val <|> try letrecdecl <|> letdecl
 ```
 <br />
+
 To fix the second issue and third issues, we make a simple modification to `letin` (and also to `letrecin`, but as can be seen here I have combined them)
 
 ```Haskell
