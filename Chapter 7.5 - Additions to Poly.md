@@ -18,7 +18,7 @@ The phrase `| m -> s` is called a "Functional Dependency", and means that `m` _d
 
 `isExhausted :: MonadSupply s m => m Bool` is provided just in-case. I suspect that every time we need this monad, we will be using an infinite supply, and we won't insert exhausted-checks when our supply is infinite.
 
-Since we also plan on using other monads underneath `SupplyT`, we need to make sure that `SupplyT s m` is an instance of a monad class if `m` is an instance of that monad class. These instances are trivial:
+Since we also plan on using other monads underneath `SupplyT`, we need to make sure that if `m` is a `MonadSupply`,  then common transformers on top of `m` are still a `MonadSupply`. These instances are trivial:
 ```Haskell
 instance MonadSupply s m => MonadSupply s (ExceptT e m) where
     supply = lift supply
