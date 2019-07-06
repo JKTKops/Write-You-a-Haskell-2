@@ -122,8 +122,8 @@ As noted in some issues on the original Write You a Haskell github page, let-pol
 Poly> \x -> let y = x + 1 in y
 <<closure>> :: forall a. Int -> a
 ```
-This type is clearly wrong; it should be `Int -> Int`. What happened was we generated the types `x :: a` and `x + 1 :: b`, and then unify `a ~ Int` and `b ~ Int`. Then we generalize; `y :: forall b. b`. Now in the body of the let we instantiate this scheme to `y :: c`.
-Then when constraints were solved, `b ~ Int` never manifests, because no expression has the type `b`.
+This type is clearly wrong; it should be `Int -> Int`. What happened was we generated the types `x :: a` and `x + 1 :: b`, and then unified `a ~ Int` and `b ~ Int`. Then we generalized; `y :: forall b. b`. Now in the body of the let we instantiated this scheme to `y :: c`.
+Then when constraints were solved, `b ~ Int` never manifested, because no expression had the type `b`.
 
 To fix this, we need to solve the constraints on the rhs _before_ generalizing. Unfortunately, this is slightly out of line with the separation of constraints and solving, but fortunately we can simply re-use our solution to solving the constraints here and keep them separated.
 
