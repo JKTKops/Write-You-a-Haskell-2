@@ -18,7 +18,7 @@ The phrase `| m -> s` is called a "Functional Dependency", and means that `m` _d
 
 `isExhausted :: MonadSupply s m => m Bool` is provided just in-case. I suspect that every time we need this monad, we will be using an infinite supply, and we won't insert exhausted-checks when our supply is infinite.
 
-Since we also plan on using other monads underneath `SupplyT`, we need to make sure that if `m` is a `MonadSupply`,  then common transformers on top of `m` are still a `MonadSupply`. These instances are trivial:
+Since we also plan on using other monads with `SupplyT`, we need to make sure that if `m` is a `MonadSupply`,  then common transformers on top of `m` are still a `MonadSupply`. These instances are trivial:
 ```Haskell
 instance MonadSupply s m => MonadSupply s (ExceptT e m) where
     supply = lift supply
@@ -70,7 +70,7 @@ defaultNameSupply = [1..] >>= flip replicateM ['a'..'z']
 ```
 This results in the list `["a", "b", ..., "z", "aa", "ab", ...]`.
 <br />
-The last detail is that the monad class instances go both ways. We've provided instances of `MonadSupply` when a `MonadSupply` is on top of a common transformer, but we could also have a common transformer on top of `SupplyT`. So we also have to provided instances of the form:
+The last detail is that the monad class instances go both ways. We've provided instances of `MonadSupply` when a common transformer is on top of a `MonadSupply`, but we could also have a `SupplyT` on top of a common transformer. So we also have to provide instances of the form:
 ```Haskell
 instance MonadError e m => MonadError e (SupplyT s m)
 ```
