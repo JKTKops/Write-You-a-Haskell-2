@@ -116,11 +116,11 @@ rename       :: PhSyn.PhSyn RdrName -> CompilerM (PhSyn.PhSyn Name)
 typecheckPh  :: PhSyn.PhSyn Name -> CompilerM (PhSyn.PhSyn Id)
 desugar      :: PhSyn.PhSyn Id -> CompilerM (PhSyn.PhSyn Id)
 ph2Core      :: PhSyn.PhSyn Id -> CompilerM CoreSyn.CoreSyn
-simplify      :: CompilerM () -- Now the AST is in compiler state
+simplify     :: CompilerM () -- Now the AST is stored in the compiler state
 tidyCore     :: CompilerM ()
-prepCore      :: CompilerM ()
-core2STG        :: CompilerM StgSyn.StgSyn
-stg2Java        :: StgSyn.StgSyn -> CompilerM Java.Syn
+prepCore     :: CompilerM ()
+core2STG     :: CompilerM StgSyn.StgSyn
+stg2Java     :: StgSyn.StgSyn -> CompilerM Java.Syn
 ```
 
 At the end, we simply pretty-print the Java AST that we've built, along with our runtime system.
