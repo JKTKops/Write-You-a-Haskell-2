@@ -106,7 +106,7 @@ data CompilerState = CompilerState
     , cls_hrchy :: ClsEnv.ClsHeirarchy   -- Typeclass heirarchy
     }
 ```
-Of course all of this is subject to change, because I'm learning as I go. In particular, the state doesn't contain the `PhSyn` AST. This is because we'll follow GHC's example and parameterize our AST by the type of identifiers in it. We'll manually thread the different AST type through the pipeline. The `CoreSyn` AST on the other hand will only ever have one type of identifier.
+Of course all of this is subject to change, because I'm learning as I go. In particular, the state doesn't contain the `PhSyn` AST. This is because we'll follow GHC's example and parameterize our AST by the type of identifiers in it. We'll manually thread the different AST type through the pipeline. The `CoreSyn` AST on the other hand will only ever have one type of identifier (the `Expr` type will be parameterized by the types of the binders, but it will always be parameterized by `CoreBndr` between compiler phases).
 
 I won't necessarily follow the original chapter plan, but for the next several chapters we will be incrementally building a series of transformations.
 
@@ -125,7 +125,7 @@ stg2Java     :: StgSyn.StgSyn -> CompilerM Java.Syn
 
 At the end, we simply pretty-print the Java AST that we've built, along with our runtime system.
 
-For the interpreter, I'm _not worried about performance_. I plan to simple recompile the source of everything in the interpreter environment at each command. When interpreting, we'll intercept the code _before_ the simplifier and execute that. But we'll provide commands to go further into the pipeline and show the results.
+For the interpreter, I'm _not worried about performance_. I plan to simply recompile the source of everything in the interpreter environment at each command. When interpreting, we'll intercept the code _before_ the simplifier and execute that. But we'll provide commands to go further into the pipeline and show the results.
 
 After we have all these transformations ready, the compiler itself becomes a straightforward chain of all these transformations.
 
@@ -136,8 +136,8 @@ compileModule = runCompilerM $
             >=> rename
             >=> typecheckPh
             >=> desugar
-            >=> do ph2Core
-                   simplify
+            >=> ph2Core
+             >> do simplify
                    tidyCore
                    iFace <- core2iFace
                    prepCore
@@ -191,17 +191,17 @@ compose = \(ds1 : d -> e)
 The flags we use also resemble GHC's and allow dumping out the pretty printed form of each of the intermediate transformation passes. 
 
 -   `-ddump-parsed`
--   `-ddump-desugar`
 -   `-ddump-rn`
+-   `-ddump-desugar`
 -   `-ddump-infer`
--   `-ddump-core`
 -   `-ddump-types`
+-   `-ddump-core`
 -   `-ddump-simpl`
 -   `-ddump-stg`
 -   `-ddump-java`
 -   `-ddump-to-file`
 
-When compiling normally, these flags will just result in the corresponding intermediate form getting dumped to `protohaskellcompiler.dump` (or to a specified file, with `ddump-to-file` on). When interpreting, any flag after `ddump-types` will cause the compiler to go further than it normally would during interactive sessions. It'll go as far down the pipeline as it needs to do dump the requested form.
+When compiling normally, these flags will just result in the corresponding intermediate form(s) getting dumped to `protohaskellcompiler.dump` (or to a specified file, with `ddump-to-file` on). When interpreting, any flag after `ddump-core` will cause the compiler to go further than it normally would during interactive sessions. It'll go as far down the pipeline as it needs to in order to dump the requested form.
 
 We won't dump to `stdout` since, as mentioned above, the rather not-smart interpreter will recompile everything entered via the current session on every command.
 
@@ -209,7 +209,7 @@ We'll implement the repl with `repline`.
 
 <h4> Parser </h4>
 
-We'll use Alex for lexing and then a normal Parsec parse, with a custom user-state extension for indentation-sensitive parsing.
+We'll use Alex for lexing and then a normal Parsec parser, with a custom user-state extension for indentation-sensitive parsing.
 
 We _won't_ add operator context sensitivity to the parser. We'll do this the "right way," by parsing all operators with a default precedence and associativity. After parsing, we collect the "true" fixity information and correct the AST. GHC follows this pattern (and this is why errors about orphan fixity declarations don't go with errors about operators not being in scope).
 
@@ -277,31 +277,30 @@ fromRational (3.14 :: Rational)
 
 <h4> Core </h4>
 
-The Core language is the result of translation of the frontend language into an explicitly typed form. Like GHC, we will use a System-F variant, but unlike GHC we will use "vanilla" System-F. GHC has included a couple extensions to System-F in Core which it uses to implement several fancy features. The interested reader is welcome to implement these extensions on top of the work done here.
+The Core language is the result of translation of the frontend language into an explicitly typed form. Like GHC, we will use a System-F variant, but unlike GHC we will use "vanilla" System-F. GHC has included a couple extensions to System-F in Core which it uses to implement several fancy features. In fact, GHC's core is more accurately called _System-FC_. The interested reader is welcome to implement these extensions on top of the work done here.
 
 The Core language is one of the most defining features of GHC Haskell - the compilation into a statically typed intermediate language. It is a well-engineered detail of GHC's design and it has informed much of how Haskell has evolved. Simon Peyton Jones says "if you can translate it into Core, then [an extension] is really just some form of syntactic sugar. But if it would require an extension to Core, then we have to think a lot more carefully."
 
 ```Haskell
 data Expr b -- b is the type of binders
-      = Var Id
-      | Lit Literal
-      | App (Expr b) (Arg b)
-      | Lam b (Expr b)
-      | Let (Bind b) (Expr b)
-      | Case (Expr b) b Type [Alt b]
-      | Type Type
+     = Var Id
+     | Lit Literal
+     | App (Expr b) (Arg b)
+     | Lam b (Expr b)
+     | Let (Bind b) (Expr b)      
+     | Case (Expr b) b Type [Alt b]
+     | Type Type
 
--- A general Expr should never be a Type
--- but an Arg can be
+-- A general Expr should never be a Type, but an Arg can be
 type Arg b = Expr b
 
 -- Case split alternative.
 type Alt b = (AltCon, [b], Expr b)
 data AltCon
-      = DataAlt DataCon
-      | LitAlt Literal
-      | DEFAULT
-      deriving Eq
+     = DataAlt DataCon
+     | LitAlt Literal
+     | DEFAULT
+     deriving Eq
 
 data Bind b = NonRec b (Expr b)
             | Rec [(b, (Expr b))]
@@ -310,7 +309,7 @@ type CoreExpr = Expr CoreBndr
 type CoreBndr = Var
 ```
 
-These definitions are taken directly from GHC - in `compiler/coreSyn/CoreSyn.hs`. However I've removed the features of GHC Core that GHC uses to implement fancy things like coercions. We'll implement newtypes (something that GHC uses coercions for) on a _second_ pass, and we'll do it by effectively replacing newtype wrapping and unwrapping with `id`. Then we'll let it get optimized away. As always, an interested reader is encouraged to implement coercions if they want.
+These definitions are taken directly from GHC - in `compiler/coreSyn/CoreSyn.hs`. However I've removed the features of GHC Core that GHC uses to implement fancy things like coercions. We'll implement newtypes (something that GHC uses coercions for) on a _second_ pass over the project, and we'll do it by effectively replacing newtype wrapping and unwrapping with `id`. Then we'll let it get optimized away. As always, an interested reader is encouraged to implement coercions if they want.
 
 Since Core is covered in explicit types, implementing an internal type checker will be trivial. We'll provide a flag to run this type checker on generated core after desugaring and optimizations. SPJ calls this a "crucial sanity check."
 
@@ -373,14 +372,14 @@ The Frontend language for ProtoHaskell is a fairly large language, consisting of
 -   `Types`  - Type syntax
 -   `Binds`  - Binders
 
-At the top is the named  _Module_  and all toplevel declarations contained therein. The first revision of the compiler has a very simple module structure, which we will extend later in fun with imports and public interfaces.
+At the top is the named  _Module_  and all toplevel declarations contained therein. The first revision of the compiler has a very simple module structure, which we will extend later with imports and public interfaces.
 
 ```Haskell
-data PhSyn = Module Name [Decl]         -- ^ module T where { .. }
+data PhSyn = Module Name [Decl] -- ^ module T where { .. }
   deriving (Eq,Show)
 ```
 
-Declarations or  `Decl`  objects are any construct that can appear at toplevel of a module. These are namely function, datatype, typeclass, and operator definitions.
+Declarations or  `Decl`  objects are any construct that can appear at the toplevel of a module. These are namely function, datatype, typeclass, and operator definitions.
 
 ```Haskell
 data Decl
@@ -416,7 +415,7 @@ data BindGroup = BindGroup
   } deriving (Eq, Show)
 ```
 
-The expression or  `Expr`  type is the core AST type that we will deal with and transform most frequently. This is effectively a simple untyped lambda calculus with let statements, pattern matching, literals, type annotations, if/these/else statements and do-notation.
+The expression or  `Expr`  type is the core AST type that we will deal with and transform most frequently. This is effectively a simple untyped lambda calculus with let statements, pattern matching, literals, type annotations, if/then/else statements and do-notation.
 
 ```Haskell
 data Expr
@@ -433,7 +432,7 @@ data Expr
   deriving (Eq, Show)
 ```
 
-Inside of case statements will be a distinct pattern matching syntax, this is used both at the toplevel function declarations and inside of case statements.
+Inside of case statements will be a distinct pattern matching syntax, this is used both at the toplevel, for function declarations, and inside of case statements.
 
 ```Haskell
 data Match = Match
@@ -470,7 +469,7 @@ data Literal
   deriving (Eq, Ord, Show)
 ```
 
-For data declarations we have two categories of constructor declarations that can appear in the body, regular constructors and record declarations. We will add support for `GADTSyntax` after the first pass.
+For data declarations we have two categories of constructor declarations that can appear in the body, regular constructors and record declarations. We will add support for `GADTSyntax` after the first revision.
 
 ```Haskell
 -- Regular Syntax
@@ -500,10 +499,7 @@ data FixitySpec = FixitySpec
 data Assoc = L | R | N
   deriving (Eq,Ord,Show)
 
-data Fixity
-  = Infix Assoc Int
-  | Prefix Int
-  | Postfix Int
+data Fixity = Infix Assoc Int
   deriving (Eq,Ord,Show)
 ```
 
@@ -516,7 +512,7 @@ We'll quite frequently need to run over parts of the AST and replace certain pat
 ```Haskell
 traverseAstM :: Monad m => (Expr -> m Expr) -> Expr -> m Expr
 traverseAstM f e = f e >>= \e' -> case e' of
-    App a b    -> App <$> traverseAstM f a <*> traverseAstM f b
+    App a b   -> App <$> traverseAstM f a <*> traverseAstM f b
     Var a     -> return e'
     Lam a b   -> Lam <$> pure a <*> traverseAstM f b
     Lit n     -> return e'
