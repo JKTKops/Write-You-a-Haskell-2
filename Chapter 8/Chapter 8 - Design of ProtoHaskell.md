@@ -375,14 +375,14 @@ The Frontend language for ProtoHaskell is a fairly large language, consisting of
 
 At the top is the named  _Module_  and all toplevel declarations contained therein. The first revision of the compiler has a very simple module structure, which we will extend later in fun with imports and public interfaces.
 
-```
+```Haskell
 data PhSyn = Module Name [Decl]         -- ^ module T where { .. }
   deriving (Eq,Show)
 ```
 
 Declarations or  `Decl`  objects are any construct that can appear at toplevel of a module. These are namely function, datatype, typeclass, and operator definitions.
 
-```
+```Haskell
 data Decl
   = FunDecl BindGroup                    -- ^ f x = x + 1
   | TypeDecl Type                        -- ^ f :: Int -> Int
@@ -395,7 +395,7 @@ data Decl
 
 A binding group is a single line of definition for a function declaration. For instance the following function has two binding groups.
 
-```
+```Haskell
 factorial :: Int -> Int
 
 -- Group #1
@@ -407,7 +407,7 @@ factorial n = n * factorial (n - 1)
 
 One of the primary roles of the desugarer is to merge these disjoint binding groups into a single splitting tree of case statements under a single binding group.
 
-```
+```Haskell
 data BindGroup = BindGroup
   { matchName  :: Name
   , matchPats  :: [Match]
@@ -418,9 +418,7 @@ data BindGroup = BindGroup
 
 The expression or  `Expr`  type is the core AST type that we will deal with and transform most frequently. This is effectively a simple untyped lambda calculus with let statements, pattern matching, literals, type annotations, if/these/else statements and do-notation.
 
-```
-type Constr = Name
-
+```Haskell
 data Expr
   = App  Expr Expr        -- ^ a b
   | Var  Name             -- ^ x
@@ -437,11 +435,11 @@ data Expr
 
 Inside of case statements will be a distinct pattern matching syntax, this is used both at the toplevel function declarations and inside of case statements.
 
-```
+```Haskell
 data Match = Match
-  { _matchPat :: [Pattern]
-  , _matchBody :: Expr
-  , _matchGuard :: [Guard]
+  { matchPat :: [Pattern]
+  , matchBody :: Expr
+  , matchGuard :: [Guard]
   } deriving (Eq, Show)
 
 data Pattern
@@ -454,7 +452,7 @@ data Pattern
 
 The do-notation syntax is written in terms of three constructions, one for monadic binds , one for monadic statements, and one for `let`.
 
-```
+```Haskell
 data Stmt
   = Generator Pattern Expr -- ^ pat <- exp
   | Let Pattern Expr       -- ^ let pat = exp
@@ -464,7 +462,7 @@ data Stmt
 
 Literals are the atomic wired-in types that the compiler has knowledge of and will desugar into the appropriate builtin datatypes (and later, to appropriate overloaded function calls).
 
-```
+```Haskell
 data Literal
   = LitInt Int           -- ^ 1
   | LitChar Char         -- ^ 'a'
@@ -472,9 +470,9 @@ data Literal
   deriving (Eq, Ord, Show)
 ```
 
-For data declarations we have two categories of constructor declarations that can appear in the body, regular constructors and record declarations. We will allow the Haskell  `GADTSyntax`  for data declarations.
+For data declarations we have two categories of constructor declarations that can appear in the body, regular constructors and record declarations. We will add support for `GADTSyntax` after the first pass.
 
-```
+```Haskell
 -- Regular Syntax
 data Person = Person String Int
 
@@ -493,7 +491,7 @@ data ConDecl
 
 Fixity declarations are simply a binding between the operator symbol and the fixity information.
 
-```
+```Haskell
 data FixitySpec = FixitySpec
   { fixityFix :: Fixity
   , fixityName :: String
