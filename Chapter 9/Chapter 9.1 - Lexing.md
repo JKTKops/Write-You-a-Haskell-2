@@ -21,7 +21,7 @@ To use Alex, we'll need to provide a _specification file_, `Lexer.x`, in our sou
 ```Haskell
 -- Lexer.x
 {
-module Lexer (TokenType(..), Lexeme(..), lex) where
+module Compiler.Parser.Lexer (TokenType(..), Lexeme(..), lex) where
 
 import Prelude hiding (lex)
 import Data.Char (chr)
@@ -305,7 +305,7 @@ Actually making the cases is left as an exercise (see the source). Take care in 
 
 <h3> Compiling with Alex </h3>
 
-`Cabal` (and by extension, `Stack`) is aware of Alex, since Alex is included in the Haskell Platform. By adding `alex` to the `build-depends` section of your config file, the build system will automatically invoke Alex on our specification file. If you prefer to compile manually, then simply run `$ alex Lexer.x` and Alex will put a `Lexer.hs` file in the same folder.
+`Cabal` (and by extension, `Stack`) is aware of Alex, since Alex is included in the Haskell Platform. By adding `alex` to the `build-depends` section of your config file, the build system will automatically invoke Alex on your specification file. If you prefer to compile manually, then simply run `$ alex Lexer.x` and Alex will put a `Lexer.hs` file in the same folder.
 
 <h3> Closing Remarks </h3>
 
