@@ -4,6 +4,8 @@ Just like with our inference system in Poly, there are two systems playing toget
 
 Rather than continuing to do lexing with Parsec, we'll use a real lexer generator called `Alex`. Then we'll use the token stream from `Alex` as the input to a `Parsec` parser. Separating these concerns will simplify using Parsec later.
 
+My main concern with Alex is that it doesn't support `Data.Text`. I could wrap it myself but that seems to be a fairly involved effort. So instead we'll let Alex work on an input `String` and then output `Data.Text.Lazy.Text` everywhere. I suspect that this will become a performance bottleneck - feel free to try supporting `Data.Text` with Alex!
+
 Credit for this lexing strategy (and much of the lexer source) belongs to Simon Marlow, who also maintains Alex  (and GHC!). The lexer is based on the Haskell '98 lexer presented in the `/examples` folder of the Alex source, plus several fixes.
 
 <h3> Alex </h3>
@@ -14,17 +16,19 @@ Credit for this lexing strategy (and much of the lexer source) belongs to Simon 
 main = let letresult = 5 in print letresult
 ```
 
-When we encounter the string `"let"`, we should identify it as a reserved word. But when we encounter `"letresult"`, which has the same prefix, we need to identify it as a variable identifier (`VarId`). Alex handles this complexity for us.
+When we encounter the string `"let"`, we should identify it as a reserved word. But when we encounter `"letresult"`, which has the same prefix, we need to identify it as a variable identifier (`VarId`). There are much more difficult cases to handle correctly; Alex handles this complexity for us.
 
 To use Alex, we'll need to provide a _specification file_, `Lexer.x`, in our source tree. Alex spec files contain a mix of Alex-specific syntax and Haskell source code. Haskell source code is contained inside curly braces. We'll start with a module declaration.
 
 ```Haskell
 -- Lexer.x
 {
-module Compiler.Parser.Lexer (TokenType(..), Lexeme(..), lex) where
+module Compiler.Parser.Lexer (Token(..), Lexeme, lex) where
 
 import Prelude hiding (lex)
-import Data.Char (chr)
+import Data.Char (isAlphaNum, chr)
+import Data.Text.Lazy (Text)
+import qualified Data.Text.Lazy as T
 
 import Utils.Outputable
 }
@@ -211,7 +215,7 @@ alexEOF = return $ L undefined TokEOF ""
 
 Finally, we provide `lex`.
 
-```
+```Haskell
 lex :: String -> Either String [Lexeme]
 lex str = runAlex str alexLex
 
@@ -223,6 +227,26 @@ alexLex = do lexeme@(L _ tok _) <- alexMonadScan
 ```
 
 Now we have a more powerful lexer that we can use for parsing.
+
+<h3> Telling Alex About Filenames </h3>
+
+This lexer is definitely powerful, but we're about to run into a problem. If we were committed to only compiling single-file programs, we would never need to know filenames. However, eventually, we're going to support multiple-module compilation. This means we're going to need to know the filename being lexed, in order to attach complete location information to it. Alex doesn't know this on its own, so we'll need to provide it. We can do this with a custom _user state_. To start, we need to change our `wrapper` from `%wrapper "monad"` to `%wrapper "monadUserState"`. The Alex-generated code is now identical to before, with two differences. It now has references to two identifiers, `AlexUserState`, and `alexInitUserState`, which we'll need to define.
+
+The only state we care about is the filename, so `type AlexUserState = String` will suffice. We'll initialize this to `""`; `alexInitUserState = ""`.
+
+Recall that the `Alex` monad is effectively a `StateT AlexState (Except String)` monad. To properly initialize our filename, we'll make `lex` take an extra filename parameter and then pass it in so we can read it later.
+
+```Haskell
+alexInitFilename :: String -> Alex ()
+alexInitFilename fname = Alex $ \s -> Right (s { alex_ust = fname }, ())
+
+-- Utility
+alexGetFilename :: Alex String
+alexGetFilename = Alex $ \s -> Right (s, alex_ust s)
+
+lex :: String -> String -> Either String [Lexeme]
+lex fname input = runAlex input $ alexInitFilename fname >> alexLex
+```
 
 <h3> A Better Token Type </h3>
 
@@ -246,10 +270,10 @@ data Token
      | TokBackquote
 
        -- ^ Literals
-     | TokLitInteger String
-     | TokLitFloat   String
-     | TokLitChar    String
-     | TokLitString  String
+     | TokLitInteger Text
+     | TokLitFloat   Text
+     | TokLitChar    Text
+     | TokLitString  Text
 
        -- ^ Reserved Words
      | TokCase   | TokClass   | TokData   | TokDefault  | TokDeriving
@@ -265,43 +289,62 @@ data Token
      | TokTilde | TokPredArrow
 
        -- ^ Other
-     | TokVarId      String
-     | TokQualVarId  String String
-     | TokConId      String
-     | TokQualConId  String String
-     | TokVarSym     String
-     | TokQualVarSym String String
-     | TokConSym     String
-     | TokQualConSym String String
+     | TokVarId      Text
+     | TokQualVarId  Text Text
+     | TokConId      Text
+     | TokQualConId  Text Text
+     | TokVarSym     Text
+     | TokQualVarSym Text Text
+     | TokConSym     Text
+     | TokQualConSym Text Text
      | TokEOF
+     deriving (Eq, Show)
 ```
+
+Tokens with `Text` fields store the _literal_ source code which denotes the token. This means `TokLitString` `Text` still has the escape characters and gaps. We'll cheat a bit and use `Parsec` `TokenParser` to parse out our literals from the `Text` fields later, since Parsec's parsers are already designed to parse numbers, chars, and Strings according to Haskell rules.
 
 We also want to store better position information. To this end, we'll add a module, `Compiler/BasicTypes/SrcLoc.hs`.  Here we'll define `SrcLoc` and `SrcSpan`. Each of these is either `Real` or `Unhelpful`. A `Real` location is attached to anything that appears literally in the source. We'll attach `Unhelpful` locations to code generated by the compiler.
 
 ```Haskell
-data SrcLoc = RealSrcLoc !Int !Int
-            | UnhelpfulLoc !String
+data RealSrcLoc = SrcLoc !Text !Int !Int
+data SrcLoc = RealSrcLoc !RealSrcLoc
+            | UnhelpfulLoc !Text
 
-data SrcSpan = RealSrcSpan { startLine, startCol, endLine, endCol :: !Int }
-             | UnhelpfulSpan !String
+data RealSrcSpan = SrcSpan { srcSpanFile :: !Text
+                           , startLine, startCol, endLine, endCol :: !Int 
+                           }
+data SrcSpan = RealSrcSpan !RealSrcSpan
+             | UnhelpfulSpan !Text
 ```
 
-While we're at it, we can define a type `Located e = Located SrcSpan e` for attaching locations to things. And we'll follow GHC's example and throw in a `HasSrcSpan` class as well.
+We want to separate `Real` and `Unhelpful` locations at the type level, because most of our functions for working with locations will be unsafe with `Unhelpful` locations. We also don't need laziness with these types, so we make them entirely strict to avoid the overhead.
 
-Our `Lexeme` type becomes `type Lexeme = Located Token`.
+While we're at it, we can define a type `Located e = Located SrcSpan e` for attaching locations to things. Our `Lexeme` type becomes `type Lexeme = Located Token`.
 
 Then we let `mkL` dispatch on the `TokenType` of its first argument.
 
 ```Haskell
 mkL :: TokenType -> AlexInput -> Int -> Alex Lexeme
-mkL toktype (p,_,_,str) len = return case toktype of
-    TokInteger -> mkTokLitInt p (take len str)
-    TokFloat   -> mkTokLitFloat p (take len str)
-    TokChar    -> mkTokLitChar p (take len str)
-    ...
+mkL toktype (alexStartPos,_,_,str) len = do
+    fname <- alexGetFilename
+    alexEndPos <- alexGetPos
+    let AlexPn _ startLine startCol = alexStartPos
+        AlexPn _ endLine endCol = alexEndPos
+        startPos = mkSrcLoc fname startLine startCol
+        endPos   = mkSrcLoc fname endLine endCol
+        srcSpan = mkSrcSpan startPos endPos
+        src = (take len str)
+        cont = case toktype of
+            TokTypeInteger    -> mkTok1 TokLitInteger
+            TokTypeFloat      -> mkTok1 TokLitFloat
+            TokTypeChar       -> mkTok1 TokLitChar
+            ...
+    return $ cont srcSpan src
+
+mkTok1 :: (String -> Token) -> SrcSpan -> String -> Located Token
 ```
 
-Actually making the cases is left as an exercise (see the source). Take care in `TokQualVarSym` - `F..` lexes as `TokQualVarSym "F" "."`, and not as `[TokConId "F", TokTwoDots]`. Similarly, `F.<.>` lexes as `TokQualVarSym "F" "<.>"`.
+Actually making the cases is tedious, so it is left as an exercise (see the source). Take care in `TokQualVarSym` - `F..` lexes as `TokQualVarSym "F" "."`, and not as `[TokConId "F", TokTwoDots]`. Similarly, `F.<.>` lexes as `TokQualVarSym "F" "<.>"`.
 
 <h3> Compiling with Alex </h3>
 
