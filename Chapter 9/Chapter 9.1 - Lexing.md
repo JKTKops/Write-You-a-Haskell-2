@@ -332,8 +332,8 @@ mkL toktype (alexStartPos,_,_,str) len = do
         AlexPn _ endLine endCol = alexEndPos
         startPos = mkSrcLoc fname startLine startCol
         endPos   = mkSrcLoc fname endLine endCol
-        srcSpan = mkSrcSpan startPos endPos
-        src = (take len str)
+        srcSpan  = mkSrcSpan startPos endPos
+        src = take len str
         cont = case toktype of
             TokTypeInteger    -> mkTok1 TokLitInteger
             TokTypeFloat      -> mkTok1 TokLitFloat
