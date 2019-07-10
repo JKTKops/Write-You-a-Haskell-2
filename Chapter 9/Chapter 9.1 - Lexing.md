@@ -45,7 +45,7 @@ Next we need to tell Alex what mode to run in. Alex has a `basic` mode, which wi
 Now we can start specifying _macros_. Macros can be either _character sets_ or _regular expressions_. Our rules will be represented by regular expressions, and we can expand macros into those. A character set lets us assign a name to a set of characters. Character sets are prefixed with `$`.
 
 ```
-$whitechar = [\t\n\r\v\f]
+$whitechar = [\t\n\r\v\f\ ]
 $special   = [\(\)\,\;\[\]\{\}]
 ```
 
