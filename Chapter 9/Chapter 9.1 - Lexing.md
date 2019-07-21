@@ -1,5 +1,8 @@
 # Lexing
 
+
+// TODO: context-sensitive lexing for `MagicHash`
+
 Just like with our inference system in Poly, there are two systems playing together during parsing. The first system takes the input string and transforms it into a list of meaningful _units_ called `Tokens`. Tokens are things like `TokenLParen` and `TokenId String`. This system is called the _lexer_. The other system is the _parser_, which consumes tokens to construct a _parse tree_. In many cases, the parse tree and the abstract syntax tree of a language are not completely identical. This will be the case for us.
 
 Rather than continuing to do lexing with Parsec, we'll use a real lexer generator called `Alex`. Then we'll use the token stream from `Alex` as the input to a `Parsec` parser. Separating these concerns will simplify using Parsec later.
@@ -87,7 +90,7 @@ To start, let's tell Alex to ignore whitespace (we'll parse it later using the s
 
 ```
 <0> $white+ { skip }
-<0> "--"\-*[^$symbol].* { skip }
+<0> "--"\-*[^$symchar].* { skip }
 ```
 
 The Haskell source in braces here is a _continuation_. More on this in a little bit.
@@ -245,7 +248,7 @@ alexGetFilename :: Alex String
 alexGetFilename = Alex $ \s -> Right (s, alex_ust s)
 
 lex :: String -> String -> Either String [Lexeme]
-lex fname input = runAlex input $ alexInitFilename fname >> alexLex
+lex fname input = runAlex input $ alexInitFilename fname >> init <$> alexLex
 ```
 
 <h3> A Better Token Type </h3>
@@ -298,7 +301,11 @@ data Token
      | TokConSym     Text
      | TokQualConSym Text Text
      | TokEOF
-     deriving (Eq, Show)
+     deriving Eq
+
+-- Show source
+instance Show Token where
+    ...
 ```
 
 Tokens with `Text` fields store the _literal_ source code which denotes the token. This means `TokLitString` `Text` still has the escape characters and gaps. We'll cheat a bit and use `Parsec` `TokenParser` to parse out our literals from the `Text` fields later, since Parsec's parsers are already designed to parse numbers, chars, and Strings according to Haskell rules.
