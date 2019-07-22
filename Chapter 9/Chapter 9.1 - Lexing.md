@@ -2,6 +2,8 @@
 
 
 // TODO: context-sensitive lexing for `MagicHash`
+// Need start code and `lex` will need to take compiler
+// flags.
 
 Just like with our inference system in Poly, there are two systems playing together during parsing. The first system takes the input string and transforms it into a list of meaningful _units_ called `Tokens`. Tokens are things like `TokenLParen` and `TokenId String`. This system is called the _lexer_. The other system is the _parser_, which consumes tokens to construct a _parse tree_. In many cases, the parse tree and the abstract syntax tree of a language are not completely identical. This will be the case for us.
 
