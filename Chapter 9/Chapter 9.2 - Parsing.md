@@ -78,7 +78,7 @@ data Guard id = Guard (LPhExpr id) (LPhExpr id)
 
 If you wanted to implement `PatternGuards`, the type for `Guard` above would need quite a bit of work.
 
-Patterns have a relatively straightforward syntax. Patterns are either a simple variable, a constructor followed by a list of patterns, an "as-pattern" like `xs@(x:_)`, a literal pattern, or a wildcard.
+Patterns have a relatively straightforward syntax. Patterns are either a simple variable, a constructor followed by a list of patterns, an "as-pattern" like `xs@(x:_)`, a literal pattern, or a wildcard. We'll also extend the constructor case with sugar for tuples and lists.
 
 ```Haskell
 type LPat id = Located (Pat id)
@@ -88,6 +88,8 @@ data Pat id
      | PAs id (Pat id)
      | PLit PhLit
      | PWild
+     | PTuple [Pat id]
+     | PList  [Pat id]
 ```
 
 The `Sig` type mentioned above can be either a `TypeSig` or a `FixitySig`. Both of these signatures can simultaneously bind to several entities.
@@ -219,3 +221,195 @@ Between these types we have the frontend syntax covered. It remains to figure ou
 
 # The Parser
 
+(NB. I have switched from `Parsec` to `MegaParsec`, partly because of the better potential for nice, custom error messages, and partly because of the nicer *default* error messages. Setting up `MegaParsec` to work with custom token streams is much more involved than setting up `Parsec`.)
+
+There are two ways to parse a layout-sensitive grammar. The first way is to translate the token stream from a layout-sensitive form to a layout-*in*sensitive form. For Haskell, this can be done by inserting `{`, `}`, and `;` tokens into the correct places. Unfortunately, by throwing away indentation information in this fashion, we make parse errors drastically worse. GHC takes this approach.
+
+The other way is to make the parser layout-sensitive. This is the approach we will take.
+
+A number of corner cases in the Haskell grammar make the layout-sensitive parsing fairly involved. As a particularly nasty example:
+
+```Haskell
+let (x, y) = ("te\
+\st", 5) in x
+```
+
+This is nasty to parse because it is valid, but the comma on the second line *shouldn't be tested for indentation*. In fact any multi-line string causes the rest of that line to ignore indentation rules. This is very difficult to convey to a parser.
+
+Thankfully, we don't have to leave this issue to the parser to resolve. The Haskell Report recommends introducing a token representing the indentation at the first token of every line, provided that that token is preceded only by whitespace. We can add this capability to our lexer. Since our parser will know the column of the token, it's not important to include the indentation amount.
+
+We could weave this into `Alex` itself, but I find it easier to just add this information in a separate pass.
+
+```Haskell
+insertIndentationToks :: [Lexeme] -> [Lexeme]
+insertIndentationToks [] = []
+insertIndentationToks (l@(Located srcSpan _) : ls) =
+    (noLoc TokIndent) : go (l : ls)
+  where go [] = []
+        go [l] = [l]
+        go (l1@(Located s1 _) : l2@(Located s2 _) : ls) =
+            -- Test if token l2 is the first on it's line, including the end of token l1
+            if (unsafeLocLine $ srcSpanEnd s1) < (unsafeLocLine $ srcSpanStart s2)
+            -- If it is, insert indent token
+            then l1 : noLoc TokIndent : go (l2 : ls)
+            else l1 : go (l2 : ls)
+
+```
+
+Note the indentation token at the start. This will enforce that the indentation of the first token (if it's not the keyword `module`, in which case we'll just ignore the indentation) dictates the indentation of the rest of the file.
+
+This will also make it easier to parse other aspects of indentation sensitivity; we can simply make our primitive `satisfy` parser guard check for indentation tokens, and, if it sees one, guard the indentation of that token against the indentation of the current layout context, if any. So let's set up our parser type. 
+
+```Haskell
+type Parser a = Parsec [Lexeme] ParseState a
+
+data ParseState = ParseState
+    { compFlags      :: Flags
+    , indentOrd      :: Ordering
+    , layoutContexts :: [LayoutContext]
+    , endOfPrevToken :: SrcLoc
+    }
+
+data LayoutContext
+     = Explicit
+     | Implicit Int
+
+initParseState flags = ParseState flags EQ [] noSrcLoc
+```
+
+Parser combinators are *context-free*. This means that a production will act the same no matter where it appears in the grammar. However, the Haskell grammar is *context-sensitive*. That is, some tokens could be interpreted as different parts of the parse tree based on indentation alone, regardless of the rule that accepts them. To handle this, the parser needs to be stateful. By using state to track the context, we can check the context to make correct decisions. Here's the breakdown.
+
+- `compFlags` will be used to make decisions about parsing in the presence of compiler flags. For example, `TupleSections` makes `(a, b,)` legal anywhere that `\c -> (a, b, c)`  is legal.
+- `indentOrd` tells the indentation guard what the relative ordering between the reference indentation and the next token needs to be.
+- `LayoutContexts` is the major player. By tracking the reference indentations in a stack, whenever we run into a parse error at the end of block, we can simply pop a layout context and try again.
+- `endOfPrevToken` will be used to implement the `locate` combinator, which takes a parser and wraps the result in `Located`.
+
+Then we can implement a primitive `satisfy` parser than handles indentation guards, and build everything else on top of that.
+
+```haskell
+satisfy :: (Token -> Bool) -> Parser Lexeme
+satisfy p = try $ guardIndentation *> satisfyNoIndentGuard <* setIndentOrdGT
+  where setIndentOrdGT = modify $ \s -> s { indentOrd = GT }
+
+satisfyNoIndentGuard :: (Token -> Bool) -> Parser Lexeme
+satisfyNoIndentGuard p = do
+    lexeme@(Located pos _) <- Parsec.tokenPrim
+                              prettyShowToken
+                              posFromTok
+                              testTok
+    modify $ \s -> s { endOfPrevToken = mkSrcPos $ srcSpanEnd pos }
+    return lexeme
+
+guardIndentation :: Parser ()
+guardIndentation = do
+    check <- optionMaybe $ satisfyNoIndentGuard (== TokIndent)
+    ord <- gets indentOrd
+    when (isJust check || ord == EQ) $ do
+        mr <- currentLayoutContext
+        case mr of
+            Nothing -> return ()
+            Just Explicit -> return ()
+            Just (Implicit r) -> do
+                c <- sourceColumn <$> getPosition
+                when (c `compare` r /= ord) $ mzero
+                    Parsec.<?> "indentation of " ++ show r ++
+                               " (got " ++ show c ++ ")"
+```
+
+(**Idiom**: the operators `(*>) :: Applicative f => f a -> f b -> f b` and `(<*) :: Applicative f => f a -> f b -> f a` can be used to pick out a particular result from a sequence of applicative (or monadic) actions. We also have `between l r x = l *> x <* r`, but I prefer to use between when `l` and `r` are symmetric, unlike here.)
+
+The `try` around `satisfy` is necessary, because `guardIndentation` might consume a `TokIndent`. In Parsec, token consumption affects behavior. Normally, consuming a token is 1) irreversible and 2) resets "expected" error messages. We may need to check the indentation of a token multiple times if the token could belong to several different implicit layouts. For example;
+
+```haskell
+let x = do y <- foo
+           return $ bar y
+    a = x
+in a
+```
+
+We'll end up testing the indentation of `a` against the reference for the `do` block, and when that fails we'll need to test it *again* against the indentation of the `let` block. The `try` combinator turns off both effects of token consumption. If the parser fails and consumes input, then we get both backtracking and good error messages! `try` is dangerous for performance when it can cause nested "backtracking trees", but this simple one-shot case won't cause a big complication even if used inside another `try` wrapper.
+
+The check when `ord == EQ` is also necessary, otherwise we fail to reject programs like `let x = 1 y = 2 in x + y`, which should be written as
+```haskell
+let x = 1
+    y = 2 in x + y
+```
+
+We'll provide a way to set `indentOrd` to `EQ`:
+
+```haskell
+align :: Parser ()
+align = modify $ \s -> s { indentOrd = EQ }
+```
+
+We can also replace `Parsec`'s `label` combinator with a more useful, layout-sensitive one.
+
+```haskell
+label :: Parser a -> String -> Parser a
+label p lbl = do
+    mctx <- currentLayoutContext
+    case mctx of
+        Nothing -> Parsec.label p exp
+        Just Explicit -> Parsec.label p exp
+        Just (Implicit n) -> labelWithIndentInfo p lbl n
+  where
+    labelWithIndentInfo p lbl n = do
+        ord <- gets indentOrd
+        let ordPiece = case ord of
+                EQ -> show n
+                GT -> "greater than " ++ show n
+                LT -> "less than" ++ show n
+            indentPiece = "at indentation"
+        Parsec.label p $ unwords [lbl, indentPiece, ordPiece]
+
+(<?>) = label
+```
+
+Then we can start throwing up basic parsers in terms of satisfy.
+
+```haskell
+token :: Token -> Parser Lexeme
+token t = satisfy (== t) <?> prettyShowToken
+
+oneOf, noneOf :: [Token] -> Parser Lexeme
+oneOf ts = satisfy (`elem` ts)
+
+noneOf ts = satisfy (`notElem` ts)
+
+anyToken :: Parser Lexeme
+anyToken = satisfy (const True)
+
+reserved :: String -> Parser Lexeme
+reserved word = satisfy (== reservedIdToTok word)
+
+reservedOp :: String -> Parser Lexeme
+reservedOp op = satisfy (== reservedOpToTok op)
+
+parens, braces, brackets, backticks :: Parser a -> Parser a
+parens = between (token TokLParen) (token TokRParen)
+...
+
+comma :: Parser ()
+comma = void $ token TokComma
+
+commaSep :: Parser a -> Parser [a]
+commaSep p = p `sepBy` comma
+
+semicolon :: Parser ()
+semicolon = void $ token TokSemicolon
+```
+
+With these (and some more) tools in tow, we can define our context-sensitive combinators. Then to parse the grammar we'll just defer to these and otherwise forget about layout!
+
+```haskell
+locate :: Parser a -> Parser (Located a)
+locate p = do
+    startPos <- getPosition
+    let srcName = sourceName startPos
+        startLine = sourceLine startPos
+        startCol  = sourceColumn startPos
+        startLoc  = mkSrcLoc (T.pack srcName) startLine startCol
+    res <- p
+    endPos <- gets endOfPrevToken
+    return $ Located (mkSrcSpan startLoc endPos) res
+```
