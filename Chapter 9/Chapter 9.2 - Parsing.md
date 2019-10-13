@@ -109,12 +109,21 @@ Types are also relatively straightforward. We can have type variables, qualified
 type LPhType id = Located (PhType id)
 data PhType id
      = PhVarTy id
+     | PhBuiltInTyCon BuiltInTyCon
      | PhQualTy  [Pred id]    (LPhType id)
      | PhAppTy   (LPhType id) (LPhType id)
      | PhFunTy   (LPhType id) (LPhType id)
      | PhListTy  (LPhType id)
      | PhTupleTy [LPhType id]
+
+data BuiltInTyCon
+	 = UnitTyCon
+	 | ListTyCon
+	 | FunTyCon
+	 | TupleTyCon Int
 ```
+
+The `BuiltInTyCon` type is a stand-in until we have an internal representation of these types laid out. Later on, we'll either have the parser produce the internal representation instead of the `BuiltInTyCon` type, or we can have the renamer do a replacement.
 
 The type `Pred id` represents an assertion that a type "is in" a typeclass.
 
@@ -151,7 +160,7 @@ data PhLit
      | LitString Text
 ```
 
-We leave some room for future expansion, to avoid being (completely) overwhelmed. Notably, operator sections are missing, but will be fairly easily included later.
+We leave some room for future expansion, to avoid being (completely) overwhelmed. Notably, operator sections and list comprehensions are missing, but will be fairly easily included later.
 
 Local bindings can appear in many places. Bindings can be accompanied by `Sig`s, and can bind functions or patterns.
 
@@ -165,7 +174,7 @@ data PhBind id
      | PatBind (LPat id) (LRHS id)
 ```
 
-Note that pattern bindings can appear at the top level - while using this is rare, the following is a valid Haskell module.
+Note that pattern bindings can appear at the top level - while using this is rare, the following is a valid Haskell module (up to undeclared identifiers).
 
 ```Haskell
 module Example where
@@ -221,7 +230,7 @@ Between these types we have the frontend syntax covered. It remains to figure ou
 
 # The Parser
 
-(NB. I have switched from `Parsec` to `MegaParsec`, partly because of the better potential for nice, custom error messages, and partly because of the nicer *default* error messages. Setting up `MegaParsec` to work with custom token streams is much more involved than setting up `Parsec`.)
+(NB. I may switch to `MegaParsec` when version 8 is released, partly because of the better potential for nice, custom error messages, and partly because of the nicer *default* error messages. Setting up `MegaParsec` to work with custom token streams is much more involved than setting up `Parsec`.)
 
 There are two ways to parse a layout-sensitive grammar. The first way is to translate the token stream from a layout-sensitive form to a layout-*in*sensitive form. For Haskell, this can be done by inserting `{`, `}`, and `;` tokens into the correct places. Unfortunately, by throwing away indentation information in this fashion, we make parse errors drastically worse. GHC takes this approach.
 
@@ -397,6 +406,14 @@ commaSep p = p `sepBy` comma
 
 semicolon :: Parser ()
 semicolon = void $ token TokSemicolon
+
+-- | Separates Haskell expressions by arbitrary numbers of semicolons
+stmtSep :: Parser a -> Parser [a]
+stmtSep p = many semicolon >> p `sepEndBy` many1 semicolon
+
+-- | Separates at least 1 Haskell expression by arbitrary numbers of semicolons
+stmtSep1 :: Parser a -> Parser [a]
+stmtSep1 p = many semicolon >> p `sepEndBy1` many1 semicolon
 ```
 
 With these (and some more) tools in tow, we can define our context-sensitive combinators. Then to parse the grammar we'll just defer to these and otherwise forget about layout!
@@ -412,4 +429,42 @@ locate p = do
     res <- p
     endPos <- gets endOfPrevToken
     return $ Located (mkSrcSpan startLoc endPos) res
+
+openExplicit :: Parser ()
+openExplicit = token TokLBrace >> pushLayoutContext Explicit
+
+closeExplicit :: Parser ()
+closeExplicit = token TokRBrace >> popLayoutContext
+
+openImplicit :: Parser ()
+openImplicit = do
+    c <- sourceColumn <$> getPosition
+    pushLayoutContext $ Implicit c
+
+closeImplicit :: Parser ()
+closeImplicit = popLayoutContext
+
+block :: Parser a -> Parser [a]
+block p = explicitBlock <|> implicitBlock
+  where
+    explicitBlock = between openExplicit closeExplicit
+        $ stmtSep p
+    implicitBlock = between openImplicit closeImplicit
+        $ concat <$> many (align >> stmtSep1 p) <|> return []
+
+block1 :: Parser a -> Parser [a]
+block1 p = explicitBlock1 <|> implicitBlock1
+  where
+    explicitBlock1 = between openExplicit closeExplicit
+        $ stmtSep1 p
+    implicitBlock1 = between openImplicit closeImplicit
+        $ concat <$> many1 (align >> stmtSep1 p)
 ```
+
+In the definition of `block`, the last line looks pretty strange. Why write `concat <$> many (align >> stmtSep1 p) <|> return []` instead of merely `concat <$> many (align >> stmtSep p)`? The problem is that `align >> stmtSep p` can succeed without consuming any tokens, because `stmtSep` accepts the empty production. This would cause `many` to hang, but Parsec actually notices that this has happened and instead raises an error. So we have to represent a possibly empty implicit block as "Either an implicit block with something in it, or an empty implicit block." Also notice that, for a similar reason, `block1` needs `many1 (align >> stmtSep1 p)`. If we simply used `many`, then `implicitBlock1` would accept an empty block.
+
+The structure of the parser itself follows pretty directly from the grammar in the [Haskell 2010 report](https://www.haskell.org/onlinereport/haskell2010/haskellch10.html#x17-18000010.5), so rather than go into it in detail here, I suggest reading the source. The key differences are that we won't (yet) support pattern guards or tuple sections.
+
+## WIP Closing
+
+This is probably all I'm going to say about the parser unless you guys want more. Check out the issue I've opened on the WYAH2 repo explaining a temporary break I'm taking. This section is just a standin for now so that I can make sure something is published :)
