@@ -465,6 +465,6 @@ In the definition of `block`, the last line looks pretty strange. Why write `con
 
 The structure of the parser itself follows pretty directly from the grammar in the [Haskell 2010 report](https://www.haskell.org/onlinereport/haskell2010/haskellch10.html#x17-18000010.5), so rather than go into it in detail here, I suggest reading the source. The key differences are that we won't (yet) support pattern guards or tuple sections.
 
-## WIP Closing
+## Closing
 
-This is probably all I'm going to say about the parser unless you guys want more. Check out the issue I've opened on the WYAH2 repo explaining a temporary break I'm taking. This section is just a standin for now so that I can make sure something is published :)
+This is probably all I'm going to say about the parser unless you guys want more. There are also some basic tests in the `/test/Compiler/Parser/testcases` directory. I'll be using (mostly) "golden testing" for this project, similar to GHC. The test cases and their expected output is kept in files in the test directory, discovered by the testing engine (see `test/Test.hs`) and run against the expected output. I'm using `tasty-golden` for this. I also have a few small `tasty-hunit` tests. I think as the project progresses, there will continue to be a mix of both.
