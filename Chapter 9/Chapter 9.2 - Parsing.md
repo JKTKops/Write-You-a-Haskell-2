@@ -247,7 +247,7 @@ This is nasty to parse because it is valid, but the comma on the second line *sh
 
 Thankfully, we don't have to leave this issue to the parser to resolve. The Haskell Report recommends introducing a token representing the indentation at the first token of every line, provided that that token is preceded only by whitespace. We can add this capability to our lexer. Since our parser will know the column of the token, it's not important to include the indentation amount.
 
-We could weave this into `Alex` itself, but I find it easier to just add this information in a separate pass.
+We could weave this into `Alex` itself, but it's easier to just add this information in a separate pass.
 
 ```Haskell
 insertIndentationToks :: [Lexeme] -> [Lexeme]
@@ -320,7 +320,7 @@ guardIndentation = do
             Just Explicit -> return ()
             Just (Implicit r) -> do
                 c <- sourceColumn <$> getPosition
-                when (c `compare` r /= ord) $ mzero
+                when (c `compare` r /= ord) $ unexpected "indentation"
                     Parsec.<?> "indentation of " ++ show r ++
                                " (got " ++ show c ++ ")"
 ```
@@ -338,7 +338,7 @@ in a
 
 We'll end up testing the indentation of `a` against the reference for the `do` block, and when that fails we'll need to test it *again* against the indentation of the `let` block. The `try` combinator turns off both effects of token consumption. If the parser fails and consumes input, then we get both backtracking and good error messages! `try` is dangerous for performance when it can cause nested "backtracking trees", but this simple one-shot case won't cause a big complication even if used inside another `try` wrapper.
 
-The check when `ord == EQ` is also necessary, otherwise we fail to reject programs like `let x = 1 y = 2 in x + y`, which should be written as
+The check when `ord == EQ` is also necessary, otherwise we fail to (cleanly) reject programs like `let x = 1 y = 2 in x + y`, which should be written as
 ```haskell
 let x = 1
     y = 2 in x + y
@@ -358,8 +358,8 @@ label :: Parser a -> String -> Parser a
 label p lbl = do
     mctx <- currentLayoutContext
     case mctx of
-        Nothing -> Parsec.label p exp
-        Just Explicit -> Parsec.label p exp
+        Nothing -> Parsec.label p lbl
+        Just Explicit -> Parsec.label p lbl
         Just (Implicit n) -> labelWithIndentInfo p lbl n
   where
     labelWithIndentInfo p lbl n = do
@@ -367,7 +367,7 @@ label p lbl = do
         let ordPiece = case ord of
                 EQ -> show n
                 GT -> "greater than " ++ show n
-                LT -> "less than" ++ show n
+                LT -> "less than " ++ show n
             indentPiece = "at indentation"
         Parsec.label p $ unwords [lbl, indentPiece, ordPiece]
 
@@ -467,4 +467,6 @@ The structure of the parser itself follows pretty directly from the grammar in t
 
 ## Closing
 
-This is probably all I'm going to say about the parser unless you guys want more. There are also some basic tests in the `/test/Compiler/Parser/testcases` directory. I'll be using (mostly) "golden testing" for this project, similar to GHC. The test cases and their expected output is kept in files in the test directory, discovered by the testing engine (see `test/Test.hs`) and run against the expected output. I'm using `tasty-golden` for this. I also have a few small `tasty-hunit` tests. I think as the project progresses, there will continue to be a mix of both. It's staying simple for now, and it will be upgraded as we progress!
+This is probably all I'm going to say about the parser unless you guys want more. 
+
+There are also some basic tests in the `/test/Compiler/Parser/testcases` directory. I'll be using (mostly) "golden testing" for this project, similar to GHC. The test cases and their expected output is kept in files in the test directory, discovered by the testing engine (see `test/Test.hs`) and run against the expected output. I'm using `tasty-golden` for this. I also have a few small `tasty-hunit` tests. I think as the project progresses, there will continue to be a mix of both. It's staying simple for now, and it will be upgraded as we progress!
