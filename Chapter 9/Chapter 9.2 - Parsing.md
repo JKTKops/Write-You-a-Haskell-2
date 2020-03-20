@@ -465,6 +465,10 @@ In the definition of `block`, the last line looks pretty strange. Why write `con
 
 The structure of the parser itself follows pretty directly from the grammar in the [Haskell 2010 report](https://www.haskell.org/onlinereport/haskell2010/haskellch10.html#x17-18000010.5), so rather than go into it in detail here, I suggest reading the source. The key differences are that we won't (yet) support pattern guards or tuple sections.
 
+## [Full Source](https://github.com/JKTKops/ProtoHaskell/tree/465adc2c7758755994eb8b9c6ec0385d961f1cb9)
+
+Note that immediately after releasing this chapter, I defined the `FastString` type. `OccNames` now contain a `FastString`, and a `FastString` contains the `Text`.
+
 ## Closing
 
 This is probably all I'm going to say about the parser unless you guys want more. 
