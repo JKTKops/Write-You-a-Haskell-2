@@ -1,4 +1,10 @@
 # Additions to Poly
+NOTE: Following better understanding of later parts of the compiler, each phase's monad will probably just manage a supply of `Unique`s inside its `IOEnv`'s environment.
+
+OTHER NOTE: The `Outputable` module described here is fine for now, but is revamped in Chapter 10.
+
+This page will be updated to match at a later date.
+
 <h2> The SupplyT Monad Transformer </h2>
 As explained previously, a monad transformer is a way of adding new capabilities onto an existing monad, where of course monads are like "first-class actions." Frequently throughout compiling, we'll need to grab fresh names (and possibly numbers, etc). Rather than explicitly adding a component to the state layer of our monads, we can abstract this out into its own transformer layer.
 
