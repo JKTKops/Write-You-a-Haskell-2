@@ -10,7 +10,7 @@ At its core, Haskell is a surprisingly simple and elegant language. But the impl
 
 Consider this 'simple' Haskell example, and contrast with what we already have in `Poly`.
 
-```Haskell
+```haskell
 filter :: (a -> Bool) -> [a] -> [a]
 filter pred [] = []
 filter pred (x:xs)
@@ -89,7 +89,7 @@ For the interpreter, we'll intercept the output of the compiler after `Core` and
 
 The main driver of the compiler will be an `ExceptT` + `StateT` + `IO` stack. All of the compiler passes will hang off this monad.
 
-```Haskell
+```haskell
 newtype CompilerM = CompilerM
   { unCompilerM :: ExceptT Msg
                    (StateT CompilerState IO) }
@@ -111,7 +111,7 @@ Of course all of this is subject to change, because I'm learning as I go. In par
 
 I won't necessarily follow the original chapter plan, but for the next several chapters we will be incrementally building a series of transformations.
 
-```Haskell
+```haskell
 parsePhModl  :: FilePath -> L.Text -> CompilerM (PhSyn.PhSyn RdrName)
 rename       :: PhSyn.PhSyn RdrName -> CompilerM (PhSyn.PhSyn Name)
 typecheckPh  :: PhSyn.PhSyn Name -> CompilerM (PhSyn.PhSyn Id)
@@ -130,7 +130,7 @@ For the interpreter, I'm _not worried about performance_. I plan to simply recom
 
 After we have all these transformations ready, the compiler itself becomes a straightforward chain of all these transformations.
 
-```Haskell
+```haskell
 compileModule :: Flags.Flags -> (IFaceSyn, Java.Syn)
 compileModule = runCompilerM $
                 parsePhModl
@@ -164,21 +164,21 @@ Command line conventions will follow GHCi's naming conventions. There will be a 
 Command | Action
 --- | ---
 :browse | Browse the type signatures for loaded modules
-:load <file> | load a program from file
+:load \<file\> | load a program from file
 :reload | Reload the active file
 :core | Show the core (pre-simpl) of an expression
 :modules | Show all loaded module names
 :source | Show the source of an expression
 :type | Show the type of an expression
 :kind | Show the kind of an expression
-:set \<flag> | Set a flag
-:unset \<flag> | Unset a flag
+:set \<flag\> | Set a flag
+:unset \<flag\> | Unset a flag
 :constraints | Dump the typing constraints for an expression
 :quit | Exit interpreter
 
 For example:
 
-```Haskell
+```haskell
 > :type plus
 plus :: forall a. Num a => a -> a -> a
 
@@ -221,13 +221,13 @@ We _won't_ add operator context sensitivity to the parser. We'll do this the "ri
 <h4> Renamer </h4>
 
 After parsing, we will traverse the AST and transform each user-named variable from
-```Haskell
+```haskell
 data RdrName = RdrName L.Text SrcPos
 ```
 
 to
 
-```Haskell
+```haskell
 data Name = Name L.Text Unique SrcPos
 type Unique = (Pass, Int)
 ```
@@ -238,7 +238,7 @@ The `Unique`s will be distinct inside each compiler pass. In GHC, a more advance
 
 User defined data declarations need to be handled and added to the typing context so that their use throughout the program logic can be typechecked.
 
-```Haskell
+```haskell
 data Bool = False | True
 data Maybe a = Nothing | Just a
 data T1 f a = T1 (f a)
@@ -250,7 +250,7 @@ Each constructor definition will also introduce several constructor functions in
 
 Type inference and type checking will both happen here. Once the whole program is typechecked, we can transform the identifier type of the AST to its final form.
 
-```Haskell
+```haskell
 data Id = Id L.Text Unique Type SrcPos
 ```
 
@@ -270,7 +270,7 @@ We will implement the following syntactic sugar translations:
 
 Unlike Diehl's original plans, I do plan to implement overloaded literals eventually, but not in the "first pass." Overloaded literals means that we replace numeric literals with calls to functions from the `Num` and `Fractional` classes.
 
-```Haskell
+```haskell
 -- Frontend
 42 :: Num a => a
 3.14 :: Fractional a => a
@@ -286,7 +286,7 @@ The Core language is the result of translation of the frontend language into an 
 
 The Core language is one of the most defining features of GHC Haskell - the compilation into a statically typed intermediate language. It is a well-engineered detail of GHC's design and it has informed much of how Haskell has evolved. Simon Peyton Jones says "if you can translate it into Core, then [an extension] is really just some form of syntactic sugar. But if it would require an extension to Core, then we have to think a lot more carefully."
 
-```Haskell
+```haskell
 data Expr b -- b is the type of binders
      = Var Id
      | Lit Literal
@@ -324,7 +324,7 @@ We'll implement (only single-parameter) typeclasses with the usual _dictionary p
 
 Even a simple typeclass can generate some very elaborate definitions.
 
-```Haskell
+```haskell
 -- Frontend
 class Num a where
     plus :: a -> a -> a
@@ -379,14 +379,14 @@ The Frontend language for ProtoHaskell is a fairly large language, consisting of
 
 At the top is the named  _Module_  and all toplevel declarations contained therein. The first revision of the compiler has a very simple module structure, which we will extend later with imports and public interfaces.
 
-```Haskell
+```haskell
 data PhSyn = Module Name [Decl] -- ^ module T where { .. }
   deriving (Eq,Show)
 ```
 
 Declarations or  `Decl`  objects are any construct that can appear at the toplevel of a module. These are namely function, datatype, typeclass, and operator definitions.
 
-```Haskell
+```haskell
 data Decl
   = FunDecl BindGroup                    -- ^ f x = x + 1
   | TypeDecl Type                        -- ^ f :: Int -> Int
@@ -399,7 +399,7 @@ data Decl
 
 A binding group is a single line of definition for a function declaration. For instance the following function has two binding groups.
 
-```Haskell
+```haskell
 factorial :: Int -> Int
 
 -- Group #1
@@ -411,7 +411,7 @@ factorial n = n * factorial (n - 1)
 
 One of the primary roles of the desugarer is to merge these disjoint binding groups into a single splitting tree of case statements under a single binding group.
 
-```Haskell
+```haskell
 data BindGroup = BindGroup
   { matchName  :: Name
   , matchPats  :: [Match]
@@ -422,7 +422,7 @@ data BindGroup = BindGroup
 
 The expression or  `Expr`  type is the core AST type that we will deal with and transform most frequently. This is effectively a simple untyped lambda calculus with let statements, pattern matching, literals, type annotations, if/then/else statements and do-notation.
 
-```Haskell
+```haskell
 data Expr
   = App  Expr Expr        -- ^ a b
   | Var  Name             -- ^ x
@@ -439,7 +439,7 @@ data Expr
 
 Inside of case statements will be a distinct pattern matching syntax, this is used both at the toplevel, for function declarations, and inside of case statements.
 
-```Haskell
+```haskell
 data Match = Match
   { matchPat :: [Pattern]
   , matchBody :: Expr
@@ -456,7 +456,7 @@ data Pattern
 
 The do-notation syntax is written in terms of three constructions, one for monadic binds , one for monadic statements, and one for `let`.
 
-```Haskell
+```haskell
 data Stmt
   = Generator Pattern Expr -- ^ pat <- exp
   | Let Pattern Expr       -- ^ let pat = exp
@@ -466,17 +466,17 @@ data Stmt
 
 Literals are the atomic wired-in types that the compiler has knowledge of and will desugar into the appropriate builtin datatypes (and later, to appropriate overloaded function calls).
 
-```Haskell
+```haskell
 data Literal
-  = LitInt Int           -- ^ 1
-  | LitChar Char         -- ^ 'a'
-  | LitString [Char]    -- ^ "foo"#
+  = LitInt Int       -- ^ 1
+  | LitChar Char     -- ^ 'a'
+  | LitString [Char] -- ^ "foo"#
   deriving (Eq, Ord, Show)
 ```
 
 For data declarations we have two categories of constructor declarations that can appear in the body, regular constructors and record declarations. We will add support for `GADTSyntax` after the first revision.
 
-```Haskell
+```haskell
 -- Regular Syntax
 data Person = Person String Int
 
@@ -495,7 +495,7 @@ data ConDecl
 
 Fixity declarations are simply a binding between the operator symbol and the fixity information.
 
-```Haskell
+```haskell
 data FixitySpec = FixitySpec
   { fixityFix :: Fixity
   , fixityName :: String
@@ -514,7 +514,7 @@ Diehl's original Chapter 8 provides many examples for the use of these types, wh
 
 We'll quite frequently need to run over parts of the AST and replace certain patterns with other patterns. We want to automate this process and abstract it over any of the monads we may be working in.
 
-```Haskell
+```haskell
 traverseAstM :: Monad m => (Expr -> m Expr) -> Expr -> m Expr
 traverseAstM f e = f e >>= \e' -> case e' of
     App a b   -> App <$> traverseAstM f a <*> traverseAstM f b
@@ -534,7 +534,7 @@ descendCase f match = case match of
 
 The case of pure expression rewrites corresponds to the Identity monad.
 
-```Haskell
+```haskell
 traverseAst :: (Expr -> Expr) -> Expr -> Expr
 traverseAst f e = runIdentity $ traverseAstM (return . f) e
 ```
