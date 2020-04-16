@@ -1,6 +1,6 @@
 # Table of Contents
 
-[Overview](Overview.md)
+[Overview](Overview)
 
 Chapters 1-7 link to Diehl's original page.
 
@@ -11,13 +11,13 @@ Chapters 1-7 link to Diehl's original page.
 5. [Type Systems](dev.stephendiehl.com/fun/004_type_systems.html)
 6. [Evaluation](dev.stephendiehl.com/fun/005_evaluation.html)
 7. [Hindley-Milner Inference](dev.stephendiehl.com/fun/006_hindley_milner.html)
-  7.5. [Additions to Poly](7/7.5_additions_to_poly.md)
-8. [Design of ProtoHaskell](8_design_of_protohaskell.md)
+   1. [Additions to Poly](7/7.5_additions_to_poly)
+8. [Design of ProtoHaskell](8_design_of_protohaskell)
 9. Parsing
-  9.1. [Lexing](9/9.1_lexing.md)
-  9.2. [Parsing](9/9.2_parsing.md)
-10. [Auxiliary Data Structures](10/auxiliary_data_structures_overview.md)
+   1. [Lexing](9/9.1_lexing)
+   2. [Parsing](9/9.2_parsing)
+10. [Auxiliary Data Structures](10/auxiliary_data_structures_overview)
 
 
-[Contributing](Contributing.md)
-[Sources](Sources.md)
+[Contributing](Contributing)
+[Sources](Sources)
