@@ -1,5 +1,8 @@
 
 <h1> Completing Write You a Haskell </h1>
+
+[Table of Contents](Table\ Of\ Contents.md)
+
 The goal of this project is to try and, in some sense, complete Steven Diehl's Write You a Haskell. I don't know if my continuation will have the same level of detail as Diehl's original work. I plan on having my own project grow linearly as this progresses, but I will attempt to save the work into a separate Github repository at key milestones as I progress. This is a learning experience for me too - code won't be perfect, and I may make large mistakes. I'm following algorithms presented by papers where possible, and GHC itself otherwise.
 
 I don't plan on targeting `C` or `llvm`. I plan on targetting `Java`. Partly this is because I've written garbage collectors before and don't feel the need to do it again. **UPDATE**: As of returning to this project, I am now considering targeting `C` instead, for two reasons. It makes the discussion of the runtime system more interesting, and should make it considerably easier to add an NCG in the future. Considerations will continue. I may start by targeting `Java` and then have a section later about adding a `C` backend. A `Java` backend will (probably) not have an FFI that can understand subclasses. See Eta if you want that.
