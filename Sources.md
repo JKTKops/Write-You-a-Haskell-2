@@ -8,6 +8,6 @@ In no particular order:
 
 [2] Simon L. Peyton Jones. 1992. Implementing lazy functional languages on stock hardware: the Spineless Tagless G-machine. _Journal of Functional Programming_ 2, 2 (1992), 127–202. [Online]([https://www.microsoft.com/en-us/research/publication/implementing-lazy-functional-languages-on-stock-hardware-the-spineless-tagless-g-machine/).
 
-[3] Simon L.Peyton Jones. 1992. Implementing lazy functional languages on stock hardware: the Spineless Tagless G-machine. _Journal of Functional Programming_ 2, 2 (1992), 127–202.
+[3] [GHC wiki](https://gitlab.haskell.org/ghc/ghc/wikis/home)
 
-[4] [GHC wiki](https://gitlab.haskell.org/ghc/ghc/wikis/home)
+[4] [GHC Source Tree](https://gitlab.haskell.org/ghc/ghc/tree/master). Many ideas and some implementations are taken and adapted from GHC sources. Header comments on such modules will indicate when this is the case.
