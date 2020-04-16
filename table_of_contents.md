@@ -19,5 +19,5 @@ Chapters 1-7 link to Diehl's original page.
 10. [Auxiliary Data Structures](10/auxiliary_data_structures_overview)
 
 
-[Contributing](Contributing)
+[Contributing](Contributing)  
 [Sources](Sources)
