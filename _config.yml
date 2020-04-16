@@ -1,3 +1,4 @@
 theme: jekyll-theme-midnight
+include: Contributing.md
 plugins:
   - jekyll-relative-links
