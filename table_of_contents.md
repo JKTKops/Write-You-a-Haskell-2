@@ -12,7 +12,7 @@ Chapters 1-7 link to Diehl's original page.
 6. [Evaluation](dev.stephendiehl.com/fun/005_evaluation.html)
 7. [Hindley-Milner Inference](dev.stephendiehl.com/fun/006_hindley_milner.html)
    1. [Additions to Poly](7/7.5_additions_to_poly)
-8. [Design of ProtoHaskell](8/8_design_of_protohaskell)
+8. [Design of ProtoHaskell](8/design_of_protohaskell)
 9. Parsing
    1. [Lexing](9/9.1_lexing)
    2. [Parsing](9/9.2_parsing)
