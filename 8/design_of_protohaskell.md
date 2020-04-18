@@ -545,3 +545,6 @@ This framework will let us do nice things like compose AST rewrites using the fi
 
 This is just planning, and we're already at the point where I've likely made a mistake or bad design decision that will cause me headache later. If you know better than me (and if you know much of anything about writing a functional compiler, that's you!) please don't hesitate to file an issue on this repo or shoot me a message on Reddit at u/JKTKops.
 
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbMTczMTUxNDQ2M119
+-->
