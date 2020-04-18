@@ -43,7 +43,9 @@
         {{ content }}
 
         <div class="PageNavigation">
+            {% if page.previous or page.next %}
             <hr>
+            {% endif %}
             {% if page.previous %}
             <div class="left">
                 {% assign t = page.previous %}
