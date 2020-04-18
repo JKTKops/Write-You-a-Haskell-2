@@ -1,3 +1,8 @@
+---
+title: Design of ProtoHaskell
+next: Lexing
+previous: Additions to Poly
+---
 # Design of ProtoHaskell
 
 We're mostly going to follow Diehl's original planning here, but I'm going to reiterate anyway and clean up some details which I may change. This page is a re-write of the original Chapter 8 page from Diehl.
