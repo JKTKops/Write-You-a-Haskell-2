@@ -63,3 +63,6 @@ I won't include `LANGUAGE` pragmas for these extensions. Note that `FlexibleCont
 For the same reason as the above, I will try to provide very brief overviews of Haskell idioms the first time they appear, usually a sentence or less.
 
 Finally, it is _not_ my goal that the ProtoHaskell Compiler should be able to compile itself. `Control.Monad.Supply.Class` already uses `UndecidableInstances` and I would prefer ease of coding over restricting the subset of GHC-Haskell that I use. 
+<!--stackedit_data:
+eyJoaXN0b3J5IjpbLTE3NDkxODM3MzRdfQ==
+-->
