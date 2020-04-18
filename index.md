@@ -1,6 +1,5 @@
 ---
-
-
+layout: default
 ---
 
 <h1> Completing Write You a Haskell </h1>
