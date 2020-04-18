@@ -49,7 +49,7 @@
                 {% assign t = page.previous %}
                 {% assign ppage = site.pages | where:'title', t | first %}
                 <div>Previous</div>
-                <a href="{{ ppage.url }}">{{ t }}</a>
+                <a href="{{ ppage.url | relative_url }}">{{ t }}</a>
             </div>
             {% endif %}
             {% if page.next %}
@@ -57,7 +57,7 @@
                 {% assign t = page.next %}
                 {% assign npage = site.pages | where:'title', t | first %}
                 <div>Next</div>
-                <a href="{{ npage.url }}">{{ t }}</a>
+                <a href="{{ npage.url | relative_url }}">{{ t }}</a>
             </div>
             {% endif %}
         </div>
