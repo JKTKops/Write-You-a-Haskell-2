@@ -21,7 +21,7 @@
 title: Write You a Haskell 2
 email: zerglingk9012@gmail.com
 description: >- # this means to ignore newlines until "baseurl:"
-  A continuation of Steven Diehl's Write You a Haskell
+  A continuation of Stephen Diehl's Write You a Haskell
 baseurl: "/Write-You-a-Haskell-2" # the subpath of your site, e.g. /blog
 url: "jktkops.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 github_username: jktkops
