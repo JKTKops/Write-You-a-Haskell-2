@@ -1,7 +1,3 @@
----
-layout: default
----
-
 <h1> Completing Write You a Haskell </h1>
 <p><a href="table_of_contents">Table of Contents</a></p>
 <p>The goal of this project is to try and, in some sense, complete Steven Diehl’s Write You a Haskell. I don’t know if my continuation will have the same level of detail as Diehl’s original work. I plan on having my own project grow linearly as this progresses, but I will attempt to save the work into a separate Github repository at key milestones as I progress. This is a learning experience for me too - code won’t be perfect, and I may make large mistakes. I’m following algorithms presented by papers where possible, and GHC itself otherwise.</p>
