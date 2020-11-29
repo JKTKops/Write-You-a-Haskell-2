@@ -14,7 +14,7 @@ The modules in this chapter can be done in almost any order, and some of them ar
 
 3. `Bag`, a set that can contain duplicates. These are also called `MultiSet`s, call yours whatever you like. This is a basic type that isn't really worth writing a section about - you can use GHC's implementation (be sure to include the copyright notice), make a dependency on `Data.MultiSet` from the `multiset` package, or just use lists.
 
-4. `CDoc`, a wrapper on `Doc` from the `pretty` package. This will let us easily construct well-formatted messages, as well as change those messages based on compilation flags. This module is optional, especially if you don't plan on producing good error messages. Pretty printers for our data structures will use `CDoc`, but you can just use `Doc` instead. The `C` is for `Context`. (GHC calls it `SDoc`, but no one in the IRC channel seems to know why)
+4. `CDoc`, a wrapper on `Doc` from the `prettyprinter` package. This will let us easily construct well-formatted messages, as well as change those messages based on compilation flags. This module is optional, especially if you don't plan on producing good error messages. Pretty printers for our data structures will use `CDoc`, but you can just use `Doc` instead. The `C` is for `Context`. (GHC calls it `SDoc`, but no one in the IRC channel seems to know why)
 
 5. `Messages`. This module contains all of the backing implementation of error and warning messages. If you don't plan on producing good error messages or any warnings, you can pretty much skip this module.
 
@@ -28,5 +28,5 @@ If you just want to build a smaller compiler that assumes its input is correct c
 
 `CDoc` is also helpful for suppressing certain types of debugging output. If you skip it, most debugging will probably happen via dumps and ad-hoc traces.
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbMTMzMzQ3Njg0NV19
+eyJoaXN0b3J5IjpbMTc5MDE4NjA0NywxMzMzNDc2ODQ1XX0=
 -->
